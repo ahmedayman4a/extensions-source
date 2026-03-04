@@ -28,7 +28,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build Mangago extension
-        run: ./gradlew :src:en:kagane
+        run: ./gradlew :src:en:mangago:assembleDebug
 
       - name: Upload Mangago APK
         uses: actions/upload-artifact@v4
