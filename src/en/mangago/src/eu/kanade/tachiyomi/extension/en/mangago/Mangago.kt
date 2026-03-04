@@ -6,10 +6,12 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Rect
 import android.util.Base64
+import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceScreen
 import androidx.preference.SwitchPreferenceCompat
 import app.cash.quickjs.QuickJs
 import eu.kanade.tachiyomi.network.GET
+import eu.kanade.tachiyomi.network.interceptor.rateLimit
 import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
@@ -70,6 +72,16 @@ class Mangago :
     private val preferences: SharedPreferences by getPreferencesLazy()
 
     override val client = network.cloudflareClient.newBuilder()
+        .apply {
+            if (!preferences.getBoolean(RATE_LIMIT_DISABLED_PREF, false)) {
+                rateLimit(
+                    preferences.getString(RATE_LIMIT_PERMITS_PREF, RATE_LIMIT_PERMITS_DEFAULT.toString())!!
+                        .toIntOrNull()?.takeIf { it > 0 } ?: RATE_LIMIT_PERMITS_DEFAULT,
+                    preferences.getString(RATE_LIMIT_PERIOD_PREF, RATE_LIMIT_PERIOD_DEFAULT.toString())!!
+                        .toDoubleOrNull()?.takeIf { it > 0 } ?: RATE_LIMIT_PERIOD_DEFAULT,
+                )
+            }
+        }
         .setRandomUserAgent(
             preferences.getPrefUAType(),
             preferences.getPrefCustomUA(),
@@ -729,10 +741,42 @@ class Mangago :
                 "You might also want to clear the database in advanced settings."
             setDefaultValue(false)
         }.let(screen::addPreference)
+
+        SwitchPreferenceCompat(screen.context).apply {
+            key = RATE_LIMIT_DISABLED_PREF
+            title = "Disable rate limiting"
+            summary = "Remove all request throttling. May cause bans. Requires app restart to take effect."
+            setDefaultValue(false)
+        }.let(screen::addPreference)
+
+        EditTextPreference(screen.context).apply {
+            key = RATE_LIMIT_PERMITS_PREF
+            title = "Rate limit: requests per period"
+            summary = "Number of requests allowed per period. Default: $RATE_LIMIT_PERMITS_DEFAULT. Requires app restart to take effect."
+            setDefaultValue(RATE_LIMIT_PERMITS_DEFAULT.toString())
+            dialogTitle = title
+            setOnBindEditTextListener { it.inputType = android.text.InputType.TYPE_CLASS_NUMBER }
+        }.let(screen::addPreference)
+
+        EditTextPreference(screen.context).apply {
+            key = RATE_LIMIT_PERIOD_PREF
+            title = "Rate limit: period (seconds)"
+            summary = "Length of the rate limit window in seconds. Default: $RATE_LIMIT_PERIOD_DEFAULT. Requires app restart to take effect."
+            setDefaultValue(RATE_LIMIT_PERIOD_DEFAULT.toString())
+            dialogTitle = title
+            setOnBindEditTextListener { it.inputType = android.text.InputType.TYPE_CLASS_NUMBER }
+        }.let(screen::addPreference)
+
         addRandomUAPreferenceToScreen(screen)
     }
 
     companion object {
         private const val REMOVE_TITLE_VERSION_PREF = "REMOVE_TITLE_VERSION"
+
+        private const val RATE_LIMIT_DISABLED_PREF = "RATE_LIMIT_DISABLED"
+        private const val RATE_LIMIT_PERMITS_PREF = "RATE_LIMIT_PERMITS"
+        private const val RATE_LIMIT_PERIOD_PREF = "RATE_LIMIT_PERIOD"
+        private const val RATE_LIMIT_PERMITS_DEFAULT = 10
+        private const val RATE_LIMIT_PERIOD_DEFAULT = 0.1
     }
 }
