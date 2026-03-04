@@ -39,6 +39,7 @@ import java.io.InputStream
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
@@ -78,7 +79,8 @@ class Mangago :
                     preferences.getString(RATE_LIMIT_PERMITS_PREF, RATE_LIMIT_PERMITS_DEFAULT.toString())!!
                         .toIntOrNull()?.takeIf { it > 0 } ?: RATE_LIMIT_PERMITS_DEFAULT,
                     preferences.getString(RATE_LIMIT_PERIOD_PREF, RATE_LIMIT_PERIOD_DEFAULT.toString())!!
-                        .toDoubleOrNull()?.takeIf { it > 0 } ?: RATE_LIMIT_PERIOD_DEFAULT,
+                        .toLongOrNull()?.takeIf { it > 0 } ?: RATE_LIMIT_PERIOD_DEFAULT.toLong(),
+                    TimeUnit.MILLISECONDS,
                 )
             }
         }
@@ -760,8 +762,8 @@ class Mangago :
 
         EditTextPreference(screen.context).apply {
             key = RATE_LIMIT_PERIOD_PREF
-            title = "Rate limit: period (seconds)"
-            summary = "Length of the rate limit window in seconds. Default: $RATE_LIMIT_PERIOD_DEFAULT. Requires app restart to take effect."
+            title = "Rate limit: period (ms)"
+            summary = "Length of the rate limit window in milliseconds. Default: $RATE_LIMIT_PERIOD_DEFAULT. Requires app restart to take effect."
             setDefaultValue(RATE_LIMIT_PERIOD_DEFAULT.toString())
             dialogTitle = title
             setOnBindEditTextListener { it.inputType = android.text.InputType.TYPE_CLASS_NUMBER }
@@ -777,6 +779,6 @@ class Mangago :
         private const val RATE_LIMIT_PERMITS_PREF = "RATE_LIMIT_PERMITS"
         private const val RATE_LIMIT_PERIOD_PREF = "RATE_LIMIT_PERIOD"
         private const val RATE_LIMIT_PERMITS_DEFAULT = 10
-        private const val RATE_LIMIT_PERIOD_DEFAULT = 0.1
+        private const val RATE_LIMIT_PERIOD_DEFAULT = 100
     }
 }
